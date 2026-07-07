@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "登录到 WebSocket 连接时序图",
+    "subtitle": "HTTP 登录颁发 token，随后通过 token 完成 WebSocket 握手认证",
+    "output": "sanic_integration/login_ws_sequence.html",
+    "viewBox": [820, 800]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "用户", "sublabel": "用户名/密码" },
+    { "id": "client", "type": "frontend", "label": "客户端", "sublabel": "浏览器/应用" },
+    { "id": "http", "type": "backend", "label": "Sanic HTTP", "sublabel": "登录接口" },
+    { "id": "auth", "type": "security", "label": "认证逻辑", "sublabel": "校验/签发" },
+    { "id": "ws", "type": "backend", "label": "Sanic WS", "sublabel": "实时连接" },
+    { "id": "handler", "type": "messagebus", "label": "事件处理器", "sublabel": "聊天事件" }
+  ],
+  "segments": [
+    { "from": 150, "to": 350, "label": "01 HTTP 登录" },
+    { "from": 370, "to": 530, "label": "02 WebSocket 握手" },
+    { "from": 550, "to": 695, "label": "03 实时事件" }
+  ],
+  "messages": [
+    { "from": "user", "to": "client", "y": 205, "label": "输入用户名/密码" },
+    { "from": "client", "to": "http", "y": 248, "label": "POST /login", "variant": "emphasis", "note": "username + password" },
+    { "from": "http", "to": "auth", "y": 292, "label": "校验密码", "variant": "security" },
+    { "from": "auth", "to": "http", "y": 332, "label": "签发 token", "variant": "return" },
+    { "from": "http", "to": "client", "y": 372, "label": "200 返回 token", "variant": "return" },
+    { "from": "client", "to": "ws", "y": 425, "label": "GET /ws/chat?token", "variant": "emphasis" },
+    { "from": "ws", "to": "auth", "y": 468, "label": "校验 token", "variant": "security" },
+    { "from": "auth", "to": "ws", "y": 508, "label": "身份有效", "variant": "return" },
+    { "from": "ws", "to": "client", "y": 548, "label": "101 协议升级", "variant": "return" },
+    { "from": "ws", "to": "client", "y": 592, "label": "chat.connected", "variant": "dashed" },
+    { "from": "client", "to": "handler", "y": 635, "label": "chat.send", "variant": "emphasis" },
+    { "from": "handler", "to": "client", "y": 675, "label": "chat.message", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "client", "from": 240, "to": 680, "type": "frontend" },
+    { "participant": "http", "from": 248, "to": 380, "type": "backend" },
+    { "participant": "auth", "from": 287, "to": 340, "type": "security" },
+    { "participant": "auth", "from": 463, "to": 516, "type": "security" },
+    { "participant": "ws", "from": 425, "to": 605, "type": "backend" },
+    { "participant": "handler", "from": 630, "to": 683, "type": "messagebus" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "认证边界",
+      "items": [
+        "密码只通过 HTTP 登录接口提交",
+        "WebSocket 使用已签发的 token，不重复发送用户名/密码",
+        "进入事件处理前，先在握手阶段校验 token"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "运行结构",
+      "items": [
+        "HTTP 负责一次性的登录认证",
+        "WebSocket 负责长连接实时消息",
+        "101 协议升级之后，消息进入 event 协议"
+      ]
+    }
+  ]
+}
